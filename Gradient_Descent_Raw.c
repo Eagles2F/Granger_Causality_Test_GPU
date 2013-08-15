@@ -1,25 +1,21 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <cmath>
-#include <yvals.h>
-#if (_MSC_VER >= 1600)
-#define __STDC_UTF_16__
-#endif
+#include <math.h>
 #include "mat.h"
-#include "matrix.h"
+
 // Matrices are stored in row-major order: 
 // M(row, col) = *(M.elements + row * M.width + col) 
 typedef struct {
-    int width;    
-  int height;    
+    	int width;    
+ 	int height;    
 	double* elements; 
 	}Matrix;
 
 //Vector * Matrix
 void Vec_x_Matrix(double A[],Matrix B,double C[],int N,int M){
-	for(int i=0; i < M; i++){
+	int i,j;
+	for(i=0; i < M; i++){
 		double sum = 0.0;
-		for(int j=0; j < N; j++)
+		for(j=0; j < N; j++)
 		{
 			sum += A[j]*B.elements[j*B.width+i];
 		}
@@ -29,23 +25,26 @@ void Vec_x_Matrix(double A[],Matrix B,double C[],int N,int M){
 
 //Vector Substraction
 void Vec_sub(double A[],double B[],double C[],int N){
-	for(int i = 0; i < N; i++){
+	int i;
+	for(i = 0; i < N; i++){
 		C[i] = A[i]-B[i];
 	}
 }
 
 //Constant x Vector
 void Con_x_Vector(double Con, double * Vec, int N,double* Vec_R){
-	for(int i=0;i<N;i++){
+	int i;
+	for(i=0;i<N;i++){
 		Vec_R[i]=Vec[i]*Con;
 	}
 }
 
 //Get sub_matrix from matrix
 void Sub_Matrix(Matrix m,Matrix Sub_m,int N,int M,int start,int end){
-	for(int i=0; i< N; i++){
-		for(int j=start; j <end+1; j++){
-			Sub_m.elements[i*Sub_m.width+j-start] = m.elements[i*Sub_m.width+j];
+	int i,j;
+	for(i=0; i< N; i++){
+		for(j=start; j <end+1; j++){
+			Sub_m.elements[i*Sub_m.width+j-start] = m.elements[i*m.width+j];
 		}
 	}
 }
@@ -82,20 +81,21 @@ void Gradient_descent(Matrix A, Matrix Series,int max_iter, double delta,int N,i
 	Sub_Matrix(Series,Series_sub1,N,T,0,T-2);
 	Sub_Matrix(Series,Series_sub2,N,T,1,T-1);
 	// transpose sub matrix1
-	for(int i = 0;i<T-1;i++){
-		for(int j=0;j<N;j++){
+	int i,j,ind;
+	for(i = 0;i<T-1;i++){
+		for(j=0;j<N;j++){
 			Series_sub1_Transpose.elements[i*Series_sub1_Transpose.width+j]=Series_sub1.elements[j*Series_sub1.height+i];
 		}
 	}
 
-	for(int ind=0; ind<N; ind++){
-		for(int i =0; i < N; i++){
+	for(ind=0; ind<N; ind++){
+		for(i =0; i < N; i++){
 			Aind[i]=A.elements[ind*A.width+i];
 		}
-		for(int i=0; i < T-1; i++){
+		for(i=0; i < T-1; i++){
 			Series_sub2ind[i]=Series_sub2.elements[ind*Series_sub2.width+i];
 		}
-		for (int i = 0; i < max_iter; i++){
+		for (i = 0; i < max_iter; i++){
 			// compute G
 			Vec_x_Matrix(Aind,Series_sub1,Temp,N,T-1);
 			Vec_sub(Temp,Series_sub2ind,Temp,T-1);
@@ -104,6 +104,10 @@ void Gradient_descent(Matrix A, Matrix Series,int max_iter, double delta,int N,i
 			// compute the A[ind] in the next iteration
 			Con_x_Vector(delta,G,N,G);
 			Vec_sub(Aind,G,Aind,N);
+		}
+		//copy Aind to A[ind][:]
+		for(i= 0; i<N;i++) {
+			A.elements[ind*A.width+i] = Aind[i];
 		}
 	}
 	// Free the tempory memomry
@@ -119,7 +123,7 @@ void Gradient_descent(Matrix A, Matrix Series,int max_iter, double delta,int N,i
 int main(int argc, char** argv){
 	int T = 200;
 	int N = 100;
-	double delta = (double)exp(-5);
+	double delta = (double)pow(10,-5);
 	int max_iter = 100;
 	size_t size;
 	
@@ -164,8 +168,9 @@ int main(int argc, char** argv){
 	A.height = N;
 	size = A.width*A.height*sizeof(double);
 	A.elements = (double*)malloc(size);
-	for(int i =0; i < A.height; i++){
-		for(int j = 0; j < A.width; j++){
+	int i,j;
+	for(i =0; i < A.height; i++){
+		for(j = 0; j < A.width; j++){
 			A.elements[i*A.width+j] = 0;
 		}
 	}
