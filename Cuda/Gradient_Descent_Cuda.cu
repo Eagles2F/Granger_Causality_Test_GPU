@@ -253,10 +253,6 @@ int main(int argc, char** argv){
 	}
 	cudaEventRecord(stop,0);
 	cudaEventSynchronize(stop);
-	float ms;
-	cudaEventElapsedTime(&ms,start,stop);
-	printf("counter:%d  time required:%fms\n",COUNTER,ms);
-
 	size = A.width*A.height*sizeof(double);
 	cudaMemcpy(A.elements,d_A.elements,size,cudaMemcpyDeviceToHost);
 
@@ -265,6 +261,11 @@ int main(int argc, char** argv){
 	cudaFree(d_Series_sub1_Transpose.elements);
 	cudaFree(d_Series_sub2.elements);
 	cudaFree(d_Series_sub1.elements);
+	float ms;
+	cudaEventElapsedTime(&ms,start,stop);
+	printf("counter:%d  time required:%fms\n",COUNTER,ms);
+
+
 	free(Series_sub1_Transpose.elements);
 	free(Series_sub2.elements);
 	free(Series_sub1.elements);

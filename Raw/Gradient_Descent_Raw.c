@@ -122,7 +122,7 @@ void Gradient_descent(Matrix A, Matrix Series,int max_iter, double delta,int N,i
 }
 	
 int main(int argc, char** argv){
-	int T = 200;
+	int T = 800;
 	int N = 100;
 	double delta = (double)pow(10,-5);
 	int max_iter = 100;
@@ -130,7 +130,7 @@ int main(int argc, char** argv){
 	
 	//load Series from .mat file
 	MATFile *pmat;	
-	const char* file ="Series.mat";
+	const char* file ="Series_100_800.mat";
 	const char* varname="Series";
 	mxArray* Series_mat;
 	pmat = matOpen(file, "r");
@@ -175,7 +175,7 @@ int main(int argc, char** argv){
 	
 	tstart =(double)clock()/CLOCKS_PER_SEC;
 	int counter = 0;
-	while(counter<100){
+	while(counter<10){
 		//initialize A	
 		for(i =0; i < A.height; i++){
 			for(j = 0; j < A.width; j++){
