@@ -111,15 +111,13 @@ __global__  void Gradient_descent(Matrix A, Matrix Series,int max_iter, double d
 
 
 int main(int argc, char** argv){
-	int T = 200;
-	int N = 100;
 	double delta = (double)pow(10,-5);
 	int max_iter = 100;
 	size_t size;
 	
 	//load Series from .mat file
 	MATFile *pmat;	
-	const char* file ="Series.mat";
+	const char* file =argv[1];
 	const char* varname="Series";
 	mxArray* Series_mat;
 	pmat = matOpen(file, "r");
@@ -140,7 +138,9 @@ int main(int argc, char** argv){
 	mwSize nRow = mxGetM(Series_mat); 
 	mwSize nCol = mxGetN(Series_mat);
 	double *Series_Pr = mxGetPr(Series_mat);
-	
+	int T = nCol;
+	int N = nRow;	
+
 	Matrix Series;
 	Series.width = 	nCol;
 	Series.height = nRow;
@@ -228,6 +228,7 @@ int main(int argc, char** argv){
 	size = d_A.width*d_A.height*sizeof(double);
 	cudaMalloc(&d_A.elements,size);
 
+
 	//allocate device memory for Series(To do: allocate memeory for Series in Surface memory)
 	Matrix d_Series;
 	d_Series.width = Series.width;
@@ -246,6 +247,7 @@ int main(int argc, char** argv){
 	const int COUNTER=10;
 	while(counter < COUNTER){
 		//d_A initialization
+		size=d_A.height*d_A.width*sizeof(double);
 		cudaMemcpy(d_A.elements, A.elements, size, cudaMemcpyHostToDevice);
 		//device code
 		Gradient_descent<<<1,N>>>(d_A,d_Series,max_iter,delta,N,T,d_Series_sub1,d_Series_sub2,d_Series_sub1_Transpose);

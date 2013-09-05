@@ -14,33 +14,31 @@ typedef struct {
 	double* elements; 
 	}Matrix;
 
-//Vector * Matrix
-//C(1,M)=A(1,N)*B(N,M)
-void Vec_x_Matrix(cublasHandle_t &handle,double A[],Matrix B,double C[],int N,int M){
-	int lda=1,ldb=N,ldc=1;
+//Matrix * Matrix
+//C(N,M)=A(N,N)*B(N,M)
+void Matrix_x_Matrix(cublasHandle_t &handle,Matrix A,Matrix B,Matrix C){
+	int N=A.width;
+	int M=B.width;
+	int lda=N,ldb=N,ldc=N;
 	const double alf=1;
 	const double bet=0;
 	const double*alpha = &alf;
 	const double*beta=&bet;
 		
 	//Do the operation
-	cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, 1,M,N,alpha,A,lda,B.elements,ldb,beta,C,ldc);
+	cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, N,M,N,alpha,A.elements,lda,B.elements,ldb,beta,C.elements,ldc);
 }
 
-//Vector Substraction
-void Vec_sub(double A[],double B[],double C[],int N){
-	int i;
-	for(i = 0; i < N; i++){
-		C[i] = A[i]-B[i];
-	}
-}
-
-//Constant x Vector
-void Con_x_Vector(double Con, double * Vec, int N,double* Vec_R){
-	int i;
-	for(i=0;i<N;i++){
-		Vec_R[i]=Vec[i]*Con;
-	}
+//Matrix - beta*Matrix
+void Matrix_minus_Matrix(cublasHandle_t &handle,Matrix A,Matrix B, Matrix C,double beta){
+	beta = -beta;
+	double alpha = 1;
+	const double* alf = &alpha;
+	const double* bet = &beta;
+	int lda = A.height;
+	int ldb = B.height;
+	int ldc = C.height;
+	cublasDgeam(handle,CUBLAS_OP_N,CUBLAS_OP_N,A.height,A.width,alf,A.elements,lda,bet,B.elements,ldb,C.elements,ldc);
 }
 
 //Get sub_matrix from matrix
@@ -54,8 +52,7 @@ void Sub_Matrix(Matrix m,Matrix Sub_m,int N,int M,int start,int end){
 }
 
 void Gradient_descent(Matrix A, Matrix Series,int max_iter, double delta,int N,int T){
-	double* Aind = (double*)malloc(N*sizeof(double));
-	double* Series_sub2ind = (double*)malloc((T-1)*sizeof(double));
+	
 	// allocate the space for Series_sub1
 	Matrix Series_sub1;
 	Series_sub1.width = T-1;
@@ -85,17 +82,10 @@ void Gradient_descent(Matrix A, Matrix Series,int max_iter, double delta,int N,i
 	int i,j,ind;
 	for(i = 0;i<T-1;i++){
 		for(j=0;j<N;j++){
-			Series_sub1_Transpose.elements[i+j*Series_sub1_Transpose.height]=Series_sub1.elements[j+i*Series_sub1.width];
+			Series_sub1_Transpose.elements[i+j*Series_sub1_Transpose.height]=Series_sub1.elements[j+i*Series_sub1.height];
 		}
 	}
-	for(ind =0;ind++;ind<N){
-		for(i =0; i < N; i++){
-			Aind[i]=A.elements[ind+i*A.height];
-		}
-		for(i=0; i < T-1; i++){
-			Series_sub2ind[i]=Series_sub2.elements[i*Series_sub2.height+ind];
-		}
-	}
+
 
 	//allocate the device memory for Series_sub1,Series_sub1_Transpose,Temp,A,Series_sub2
 	Matrix d_Series_sub1;
@@ -125,39 +115,29 @@ void Gradient_descent(Matrix A, Matrix Series,int max_iter, double delta,int N,i
 	size = d_A.width*d_A.height*sizeof(double);
 	cudaMalloc(&d_A.elements,size);
 	cudaMemcpy(d_A.elements,A.elements,size,cudaMemcpyHostToDevice);
-	//copy Aind and Series_sub2ind to device memory
-	double* d_Aind;
-	cudaMalloc(&d_Aind,N*sizeof(double));
-	cudaMemcpy(d_Aind,Aind,N*sizeof(double),cudaMemcpyHostToDevice);
-	
-	double* d_Series_sub2ind;
-	cudaMalloc(&d_Series_sub2ind,(T-1)*sizeof(double));
-	cudaMemcpy(d_Series_sub2ind,Series_sub2ind,(T-1)*sizeof(double),cudaMemcpyHostToDevice);
-	
-	double* d_Temp; 
-	cudaMalloc(&d_Temp,(T-1)*sizeof(double));
 
-	double* d_G;
-	cudaMalloc(&d_G,N*sizeof(double)); 
-	
+	Matrix d_Temp;
+	d_Temp.width = T-1;
+	d_Temp.height = N;
+	size = d_Temp.width*d_Temp.height*sizeof(double);
+	cudaMalloc(&d_Temp.elements,size);
+
+	Matrix d_G;
+	d_G.width = N;
+	d_G.height= N;
+	size = d_G.width*d_G.height*sizeof(double);
+	cudaMalloc(&d_G.elements,size);	
 	//create handle for Cublas
 	cublasHandle_t handle;
 	cublasCreate(&handle);	
-
-
-	for(ind=0; ind<N; ind++){	
-		for (i = 0; i < max_iter; i++){
+		
+	for (i = 0; i < max_iter; i++){
 			// compute G
-			Vec_x_Matrix(handle,d_Aind,d_Series_sub1,d_Temp,N,T-1);
-			double alf =-1;
-			const  double *alpha = &alf;
-			cublasDaxpy(handle,T-1,alpha,d_Series_sub2ind,1,d_Temp,1);
-			Vec_x_Matrix(handle,d_Temp,d_Series_sub1_Transpose,d_G,T-1,N);
+			Matrix_x_Matrix(handle,d_A,d_Series_sub1,d_Temp);
+			Matrix_minus_Matrix(handle,d_Temp,d_Series_sub2,d_Temp,1);
+			Matrix_x_Matrix(handle,d_Temp,d_Series_sub1_Transpose,d_G);
 			// compute the A[ind] in the next iteratio
-			double alf_1=-delta;
-			const double *alpha_1 = &alf_1;
-			cublasDaxpy(handle,N,alpha_1,d_G,1,d_Aind,1);
-		}
+			Matrix_minus_Matrix(handle,d_A,d_G,d_A,delta);
 	}
 
 	cublasDestroy(handle);
@@ -165,12 +145,8 @@ void Gradient_descent(Matrix A, Matrix Series,int max_iter, double delta,int N,i
 	free(Series_sub1_Transpose.elements);
 	free(Series_sub2.elements);
 	free(Series_sub1.elements);
-	free(Series_sub2ind);
-	free(Aind);
-	cudaFree(d_G);
-	cudaFree(d_Temp);
-	cudaFree(d_Series_sub2ind);
-	cudaFree(d_Aind);
+	cudaFree(d_G.elements);
+	cudaFree(d_Temp.elements);
 	cudaFree(d_A.elements);
 	cudaFree(d_Series_sub1_Transpose.elements);
 	cudaFree(d_Series_sub2.elements);
@@ -178,15 +154,13 @@ void Gradient_descent(Matrix A, Matrix Series,int max_iter, double delta,int N,i
 }
 	
 int main(int argc, char** argv){
-	int T = 200;
-	int N = 100;
 	double delta = (double)pow(10,-5);
 	int max_iter = 100;
 	size_t size;
 	
 	//load Series from .mat file
 	MATFile *pmat;	
-	const char* file ="Series.mat";
+	const char* file =argv[1];
 	const char* varname="Series";
 	mxArray* Series_mat;
 	pmat = matOpen(file, "r");
@@ -207,6 +181,8 @@ int main(int argc, char** argv){
 	mwSize nRow = mxGetM(Series_mat); 
 	mwSize nCol = mxGetN(Series_mat);
 	double *Series_Pr = mxGetPr(Series_mat);
+	int N=nRow;
+	int T = nCol;
 	
 	Matrix Series;
 	Series.width = 	nCol;

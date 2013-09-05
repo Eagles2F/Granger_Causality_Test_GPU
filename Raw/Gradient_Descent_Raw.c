@@ -122,15 +122,14 @@ void Gradient_descent(Matrix A, Matrix Series,int max_iter, double delta,int N,i
 }
 	
 int main(int argc, char** argv){
-	int T = 800;
-	int N = 100;
+
 	double delta = (double)pow(10,-5);
 	int max_iter = 100;
 	size_t size;
 	
 	//load Series from .mat file
 	MATFile *pmat;	
-	const char* file ="Series_100_800.mat";
+	const char* file =argv[1];
 	const char* varname="Series";
 	mxArray* Series_mat;
 	pmat = matOpen(file, "r");
@@ -150,6 +149,8 @@ int main(int argc, char** argv){
 	mwSize row, col; // mwSize is int 
 	mwSize nRow = mxGetM(Series_mat); 
 	mwSize nCol = mxGetN(Series_mat);
+	int T = nCol;
+	int N = nRow;
 	double *Series_Pr = mxGetPr(Series_mat);
 	
 	Matrix Series;
