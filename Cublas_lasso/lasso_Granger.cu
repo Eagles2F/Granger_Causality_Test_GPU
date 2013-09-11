@@ -48,12 +48,25 @@ void Sub_Matrix(Matrix m,Matrix Sub_m,int N,int M,int start,int end){
 		}
 	}
 }
-
+double sign(double a){
+	if (a>0)
+		return 1;
+	else if (a==0)
+		return 0;
+	else if (a<0)
+		return -1;
+}
+double absolute(double a){
+	if(a>=0)	
+		return a;
+	else
+		return -a;
+}
 void Fun(Matrix A, Matrix B, double Lamda){
 	int i,j;
-	for(i=0;i++;i<A.height){
-		for(j=0;j++;j<A.width){
-			B.elements[i+j*B.height]=(abs(A.elements[i+j*A.height])>Lamda)*(abs(A.elements[i+j*A.height]-Lamda))*(A.elements[i+j*A.height]>0?1:-1);
+	for(i=0;i<A.height;i++){
+		for(j=0;j<A.width;j++){
+			B.elements[i+j*B.height]=(absolute(A.elements[i+j*A.height])>Lamda)*(absolute(A.elements[i+j*A.height])-Lamda)*sign(A.elements[i+j*A.height]);
 		}
 	}
 }
